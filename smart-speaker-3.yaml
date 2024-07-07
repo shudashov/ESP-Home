@@ -46,22 +46,23 @@ external_components:
 
 es8388:
 
-#output:
+output:
 #  - platform: gpio
 #    id: dac_mute
 #    pin: GPIO21
 #    inverted: true
   
-#  - platform: gpio
-#    id: green_light
-#    pin: GPIO22
+  - platform: gpio
+    id: green_light
+    pin: GPIO22
 
 i2s_audio:
   - i2s_lrclk_pin: GPIO25
     i2s_bclk_pin: GPIO5
 
-speaker:
+media_player:
   - platform: i2s_audio
+    name: None
     id: luxe_speaker
     dac_type: external
     i2s_dout_pin: GPIO26
@@ -73,15 +74,38 @@ microphone:
     adc_type: external
     i2s_din_pin: GPIO35
     pdm: false
+    bits_per_sample: 32bit
 
 voice_assistant:
-    id: assist
-    use_wake_word: true
-    noise_suppression_level: 2
-    auto_gain: 31dBFS
-#    volume_multiplier: 2.0
-    microphone: luxe_microphone
-    speaker: luxe_speaker
+  id: assist
+  use_wake_word: true
+  noise_suppression_level: 2
+  auto_gain: 31dBFS
+  volume_multiplier: 4.0
+  microphone: luxe_microphone
+  media_player: luxe_speaker
+
+  on_wake_word_detected:
+    - output.turn_on:
+        id: green_light
+
+  on_listening:
+    - output.turn_on:
+        id: green_light
+  on_stt_end:
+    - output.turn_off:
+        id: green_light
+
+  on_error: 
+    - output.turn_on: 
+        id: green_light
+    - if:
+        condition:
+         switch.is_on: use_wake_word
+        then:
+        - switch.turn_off: use_wake_word
+        - delay: 1sec 
+        - switch.turn_on: use_wake_word   
 
 switch:
   - platform: template
