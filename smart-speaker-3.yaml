@@ -1,0 +1,103 @@
+esphome:
+  name: smart-speaker-3
+  friendly_name: Smart-Speaker-3
+  on_boot:
+     - priority: -100
+       then:
+         - wait_until: api.connected
+         - delay: 1s
+         - if:
+             condition:
+               switch.is_on: use_wake_word
+             then:
+               - voice_assistant.start_continuous:
+
+esp32:
+  board: esp-wrover-kit
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "au5BE1W6gN8idfZljr38nOL1Z9rV5zFKwmRUbnW5LwM="
+
+ota:
+  - platform: esphome
+    password: "99375f3396d5027718d6dc52a7b0850a"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  output_power: 10
+
+  
+i2c:
+  sda: GPIO18
+  scl: GPIO23
+
+external_components:
+  - source: github://pr#3552 # DAC support https://github.com/esphome/esphome/pull/3552
+    components: [es8388]
+    refresh: 0s
+
+es8388:
+
+#output:
+#  - platform: gpio
+#    id: dac_mute
+#    pin: GPIO21
+#    inverted: true
+  
+#  - platform: gpio
+#    id: green_light
+#    pin: GPIO22
+
+i2s_audio:
+  - i2s_lrclk_pin: GPIO25
+    i2s_bclk_pin: GPIO5
+
+speaker:
+  - platform: i2s_audio
+    id: luxe_speaker
+    dac_type: external
+    i2s_dout_pin: GPIO26
+    mode: stereo
+
+microphone:
+  - platform: i2s_audio
+    id: luxe_microphone
+    adc_type: external
+    i2s_din_pin: GPIO35
+    pdm: false
+
+voice_assistant:
+    id: assist
+    use_wake_word: true
+    noise_suppression_level: 2
+    auto_gain: 31dBFS
+#    volume_multiplier: 2.0
+    microphone: luxe_microphone
+    speaker: luxe_speaker
+
+switch:
+  - platform: template
+    name: Use wake word
+    id: use_wake_word
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_on:
+      - lambda: id(assist).set_use_wake_word(true);
+      - if:
+          condition:
+            not:
+              - voice_assistant.is_running
+          then:
+            - voice_assistant.start_continuous
+    on_turn_off:
+      - voice_assistant.stop
+      - lambda: id(assist).set_use_wake_word(false);
